@@ -9,10 +9,11 @@
 <form method="post" action="/webmention" >
       <div>source:<input name="source" type="url" required></input></div>
       <div>target:<input name="target" type="url" required></input></div>
+      <div>property:<input name="property" type="text" ></input>(property is an <a href="http://csarven.ca/webmention">experimental extension</a> - I think it is redundant)</div>
       <div><input type="submit" value="send webmention"></div>
 </form>
 {% for mention in mentions %}
-    <div class="h-entry"><time class="dt-published" datetime="{{mention.created}}">{{mention.humancreated }}</time> <a class="h-card p-author" href="{{mention.source}}">{{mention.source}}</a> mentioned <a href="{{mention.target}}">{{mention.target}}</a> {% if mention.verified==True %}✅{%elif mention.verified==False %}❌{% endif %} <time class="dt-updated" datetime="{{mention.updated}}">{{mention.humanupdated}}</time></div>
+    <div class="h-entry"><time class="dt-published" datetime="{{mention.created}}">{{mention.humancreated }}</time> <a class="h-card p-author" href="{{mention.source}}">{{mention.source}}</a> {%if mention.property %}sent '{{mention.property}}' to{% else %}mentioned{% endif %} <a href="{{mention.target}}">{{mention.target}}</a> {% if mention.verified==True %}✅{%elif mention.verified==False %}❌{% endif %} <time class="dt-updated" datetime="{{mention.updated}}">{{mention.humanupdated}}</time></div>
 {% endfor %}
 <h2>find mentions for a domain</h2>
 <form method="get" action="/listmentions" >

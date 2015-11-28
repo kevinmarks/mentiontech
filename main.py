@@ -31,6 +31,7 @@ class Mention(ndb.Model):
     """ model received webmentions"""
     source = ndb.StringProperty(indexed=True)
     target = ndb.StringProperty(indexed=True)
+    property = ndb.StringProperty(indexed=False)
     sourcedomain = ndb.StringProperty(indexed=True)
     targetdomain = ndb.StringProperty(indexed=True)
     sourceHTML = ndb.TextProperty(indexed=False)
@@ -68,6 +69,7 @@ class WebmentionHandler(webapp2.RequestHandler):
     def post(self):
         source,sourcedomain = geturlanddomain(self.request.get('source'))
         target,targetdomain= geturlanddomain(self.request.get('target'))
+        property = self.request.get('property')
         logging.info("source: '%s' from %s target: '%s' from %s" % (source,sourcedomain,target,targetdomain))
         errortext=''
         if not source:
@@ -89,9 +91,13 @@ class WebmentionHandler(webapp2.RequestHandler):
                 mention.sourcedomain = sourcedomain
                 mention.target = target
                 mention.targetdomain = targetdomain
+                if property:
+                    mention.property = property
             else:
                 mention = mentions[0]
                 mention.verified = False
+                if property:
+                    mention.property = property
             mentionkey = mention.put()
             taskurl = '/verifymention/'+mentionkey.urlsafe()
             logging.info("WebmentionHandler: - queuing task '%s'"  % (taskurl))
