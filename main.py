@@ -12,6 +12,7 @@ import webapp2
 import logging
 import humanize
 import mf2py
+import requests
 
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
@@ -114,7 +115,6 @@ class VerifyMention(webapp2.RequestHandler):
         logging.info("VerifyMention got key %s " % (mention_key))
         mention = mention_key.get()
         if mention:
-            logging.info("VerifyMention got mention %s " % (mention))
             result = urlfetch.fetch(mention.source)
             if result.status_code == 200:
                 logging.info("VerifyMention result.content %s " % (result.content[:500]))
@@ -145,7 +145,6 @@ class SendMention(webapp2.RequestHandler):
         logging.info("SendMention got key %s " % (mention_key))
         mention = mention_key.get()
         if mention:
-            logging.info("SendMention got mention %s " % (mention))
             result = urlfetch.fetch(mention.target)
             if result.status_code == 200:
                 endpoints=set([])
@@ -171,13 +170,12 @@ class SendMention(webapp2.RequestHandler):
                         params = {"source":mention.source,"target":mention.target}
                         if mention.property:
                             params["property"]=mention.property
-                        url = endpoint+"?"+urllib.urlencode(params)
                         logging.info("SendMention calling '%s' " % (url))
                         try:
-                            result = urlfetch.fetch(url,method='POST')
+                            result = requests.post(endpoint, data=params)
+                            logging.info("SendMention got '%s' %s" % (result.status_code,result.reason))
                         except:
-                            logging.info("SendMention barfed fetching '%s' " % (url))
-                        logging.info("SendMention got '%s' %s" % (result.status_code,result.content))
+                            logging.info("SendMention barfed posting to '%s' " % (url))
                 self.response.write("OK") 
             else:
                 logging.info("SendMention could not fetch %s to check for webmention" % (mention.target))
