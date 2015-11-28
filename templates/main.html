@@ -14,4 +14,9 @@
 {% for mention in mentions %}
     <div class="h-entry"><time class="dt-published" datetime="{{mention.created}}">{{mention.humancreated }}</time> <a class="h-card p-author" href="{{mention.source}}">{{mention.source}}</a> mentioned <a href="{{mention.target}}">{{mention.target}}</a> {% if mention.verified==True %}✅{%elif mention.verified==False %}❌{% endif %} <time class="dt-updated" datetime="{{mention.updated}}">{{mention.humanupdated}}</time></div>
 {% endfor %}
+<h2>find mentions for a domain</h2>
+<form method="get" action="/listmentions" >
+      <div>target:<input name="target" type="url" required></input></div>
+      <div><input type="submit" value="find mentions"></div>
+</form>
 {% endblock %}
