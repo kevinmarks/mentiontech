@@ -1,4 +1,4 @@
 # mentiontech
 webmention experiment
 
-see http://mention-tech.appspot.com
+see <a rel="me" href="http://mention-tech.appspot.com">http://mention-tech.appspot.com</a>
