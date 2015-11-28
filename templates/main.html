@@ -1,0 +1,17 @@
+{% extends "generic.html" %}
+{% block content %}
+<article class="h-entry">
+  <h1 class="p-name">mention.tech</h1>
+ 
+  <p class="p-summary">Receiving webmentions for everyone</p>
+ 
+</article>
+<form method="post" action="/webmention" >
+      <div>source:<input name="source" type="url" required></input></div>
+      <div>target:<input name="target" type="url" required></input></div>
+      <div><input type="submit" value="send webmention"></div>
+</form>
+{% for mention in mentions %}
+    <div>{{mention.created }} {{mention.source}} mentioned {{mention.target}} {% if mention.verified %}Verified{% endif %}
+{% endfor %}
+{% endblock %}
