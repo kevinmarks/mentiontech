@@ -11,6 +11,7 @@ import jinja2
 import webapp2
 import logging
 import humanize
+import mf2py
 
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
@@ -156,20 +157,27 @@ class SendMention(webapp2.RequestHandler):
                         url=link.split(';')[0].strip('<> ')
                         logging.info("SendMention found endpoint '%s' in %s " % (url,link))
                         endpoints.add(url)
-                #TODO grep html next
+                mf2 = mf2py.Parser(result.content, url=mention.target).to_dict()
+                for url in mf2.get("rels",{}).get("webmention",[]):
+                    logging.info("SendMention found endpoint '%s' in rels " % (url))
+                    endpoints.add(url)
                 mention.targetHTML = unicode(result.content,'utf-8')
                 mention.put()
                 for endpoint in endpoints:
-                    params = {"source":mention.source,"target":mention.target}
-                    if mention.property:
-                        params["property"]=mention.property
-                    url = endpoint+"?"+urllib.urlencode(params)
-                    logging.info("SendMention calling '%s' " % (url))
-                    try:
-                        result = urlfetch.fetch(url,method='POST')
-                    except:
-                        logging.info("SendMention barfed fetching '%s' " % (url))
-                    logging.info("SendMention got '%s' %s" % (result.status_code,result.content))
+                    if 'mention-tech' in endpoint:
+                        logging.info("SendMention skipping '%s' " % (endpoint))
+                        pass
+                    else:
+                        params = {"source":mention.source,"target":mention.target}
+                        if mention.property:
+                            params["property"]=mention.property
+                        url = endpoint+"?"+urllib.urlencode(params)
+                        logging.info("SendMention calling '%s' " % (url))
+                        try:
+                            result = urlfetch.fetch(url,method='POST')
+                        except:
+                            logging.info("SendMention barfed fetching '%s' " % (url))
+                        logging.info("SendMention got '%s' %s" % (result.status_code,result.content))
                 self.response.write("OK") 
             else:
                 logging.info("SendMention could not fetch %s to check for webmention" % (mention.target))
