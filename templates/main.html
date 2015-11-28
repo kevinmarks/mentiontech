@@ -12,6 +12,6 @@
       <div><input type="submit" value="send webmention"></div>
 </form>
 {% for mention in mentions %}
-    <div>{{mention.created }} {{mention.source}} mentioned {{mention.target}} {% if mention.verified==True %}✅{%elif mention.verified==False %}❌{% endif %}
+    <div>{{mention.humancreated }} {{mention.source}} mentioned {{mention.target}} {% if mention.verified==True %}✅{%elif mention.verified==False %}❌{% endif %} {{mention.humanupdated}}
 {% endfor %}
 {% endblock %}

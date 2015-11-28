@@ -10,6 +10,8 @@ import urlparse
 import jinja2
 import webapp2
 import logging
+import humanize
+
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
 from google.appengine.api import taskqueue
@@ -41,7 +43,6 @@ def geturlanddomain(url):
         if "://" not in url:
             url = "http://"+url
     urlbits= list(urlparse.urlsplit(url))
-    logging.info(urlbits)
     domain = urlbits[1]
     return url, domain
 
@@ -55,6 +56,9 @@ class MainHandler(webapp2.RequestHandler):
             page='main'
         mentionquery = Mention.query().order(-Mention.updated)
         mentions = mentionquery.fetch(20)
+        for mention in mentions:
+            mention.humancreated = humanize.naturaltime(mention.created)
+            mention.humanupdated = humanize.naturaltime(mention.updated)
         template_values={'mentions':mentions}
         
         template = JINJA_ENVIRONMENT.get_template(page+'.html')
