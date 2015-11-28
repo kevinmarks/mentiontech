@@ -18,6 +18,7 @@ from google.appengine.api import urlfetch
 from google.appengine.api import memcache
 from google.appengine.api import taskqueue
 
+urlfetch.set_default_fetch_deadline(40)
 
 useragent = 'mention.tech/0.1 like Mozilla'
 
@@ -171,15 +172,15 @@ class SendMention(webapp2.RequestHandler):
                         if mention.property:
                             params["property"]=mention.property
                         logging.info("SendMention calling '%s' " % (url))
-                        try:
+                        if 1:
                             result = requests.post(endpoint, data=params)
                             logging.info("SendMention got '%s' %s" % (result.status_code,result.reason))
-                        except:
+                        else:
                             logging.info("SendMention barfed posting to '%s' " % (url))
                 self.response.write("OK") 
             else:
                 logging.info("SendMention could not fetch %s to check for webmention" % (mention.target))
-                self.response.write("Fetch fail - error: "+result.status_code) 
+                self.response.write("Fetch fail - error: %s" % (result.status_code)) 
         else:
             self.response.write("No mention")
 
