@@ -35,9 +35,11 @@ class Mention(ndb.Model):
     sourcedomain = ndb.StringProperty(indexed=True)
     targetdomain = ndb.StringProperty(indexed=True)
     sourceHTML = ndb.TextProperty(indexed=False)
+    targetHTML = ndb.TextProperty(indexed=False)
     created = ndb.DateTimeProperty(auto_now_add=True) #creation date
     updated = ndb.DateTimeProperty(auto_now=True) #updated date
     verified = ndb.BooleanProperty(indexed=True,default=None)
+    sendOnState = ndb.StringProperty(indexed=False)
 
 def geturlanddomain(url):
     if url:
@@ -115,6 +117,7 @@ class VerifyMention(webapp2.RequestHandler):
             result = urlfetch.fetch(mention.source)
             if result.status_code == 200:
                 logging.info("VerifyMention result.content %s " % (result.content[:500]))
+                logging.info("VerifyMention result.headers %s " % (result.headers))
                 mention.sourceHTML = unicode(result.content,'utf-8')
                 if mention.target in mention.sourceHTML:
                     mention.verified = True
@@ -122,10 +125,57 @@ class VerifyMention(webapp2.RequestHandler):
                 else:
                     mention.verified = False
                     logging.info("VerifyMention %s does not link to %s" % (mention.source,mention.target))
-                mention.put()
+                mentionkey = mention.put()
+                if mention.verified:
+                    taskurl = '/sendmention/'+mentionkey.urlsafe()
+                    logging.info("VerifyMention: - queuing task '%s'"  % (taskurl))
+                    taskqueue.add(url=taskurl)
+                self.response.write("OK") 
             else:
                 logging.info("VerifyMention could not fetch %s to check for %s" % (mention.source,mention.target))
-          
+                self.response.write("Fetch fail - error: "+result.status_code) 
+        else:
+            self.response.write("No mention")
+
+
+class SendMention(webapp2.RequestHandler):
+    def post(self,mentionkey):
+        mention_key = ndb.Key(urlsafe=mentionkey)
+        logging.info("SendMention got key %s " % (mention_key))
+        mention = mention_key.get()
+        if mention:
+            logging.info("SendMention got mention %s " % (mention))
+            result = urlfetch.fetch(mention.target)
+            if result.status_code == 200:
+                endpoints=set([])
+                logging.info("SendMention result.headers %s " % (result.headers))
+                logging.info("SendMention result.content %s " % (result.content[:500]))
+                links = result.headers.get('link','').split()
+                for link in links:
+                    if "webmention" in link:
+                        url=link.split(';')[0].strip('<> ')
+                        logging.info("SendMention found endpoint '%s' " % (url))
+                        endpoints.add(url)
+                #TODO grep html next
+                mention.targetHTML = unicode(result.content,'utf-8')
+                mention.put()
+                for endpoint in endpoints:
+                    params = {"source":mention.source,"target":mention.target}
+                    if mention.property:
+                        params["property"]=mention.property
+                    url = endpoint+"?"+urlencode(params)
+                    logging.info("SendMention calling '%s' " % (url))
+                    result = urlfetch.fetch(url,method=POST)
+                    logging.info("SendMention got '%s' " % (result.status))
+                self.response.write("OK") 
+            else:
+                logging.info("SendMention could not fetch %s to check for webmention" % (mention.target))
+                self.response.write("Fetch fail - error: "+result.status_code) 
+        else:
+            self.response.write("No mention")
+
+
+
 class ListMentions(webapp2.RequestHandler):
     def get(self):
         target,targetdomain= geturlanddomain(self.request.get('target'))
@@ -143,7 +193,8 @@ class ListMentions(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
     ('/webmention', WebmentionHandler),
-    ('/verifymention/([^/]+)?', VerifyMention),
+    ('/verifymention/(.*)', VerifyMention),
+    ('/sendmention/(.*)', SendMention),
     ('/listmentions',ListMentions),
     ('/([^/]+)?', MainHandler),
 ], debug=True)
