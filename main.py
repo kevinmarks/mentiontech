@@ -150,11 +150,11 @@ class SendMention(webapp2.RequestHandler):
                 endpoints=set([])
                 logging.info("SendMention result.headers %s " % (result.headers))
                 logging.info("SendMention result.content %s " % (result.content[:500]))
-                links = result.headers.get('link','').split()
+                links = result.headers.get('link','').split(',')
                 for link in links:
                     if "webmention" in link:
                         url=link.split(';')[0].strip('<> ')
-                        logging.info("SendMention found endpoint '%s' " % (url))
+                        logging.info("SendMention found endpoint '%s' in %s " % (url,link))
                         endpoints.add(url)
                 #TODO grep html next
                 mention.targetHTML = unicode(result.content,'utf-8')
@@ -163,10 +163,13 @@ class SendMention(webapp2.RequestHandler):
                     params = {"source":mention.source,"target":mention.target}
                     if mention.property:
                         params["property"]=mention.property
-                    url = endpoint+"?"+urlencode(params)
+                    url = endpoint+"?"+urllib.urlencode(params)
                     logging.info("SendMention calling '%s' " % (url))
-                    result = urlfetch.fetch(url,method=POST)
-                    logging.info("SendMention got '%s' " % (result.status))
+                    try:
+                        result = urlfetch.fetch(url,method='POST')
+                    except:
+                        logging.info("SendMention barfed fetching '%s' " % (url))
+                    logging.info("SendMention got '%s' %s" % (result.status_code,result.content))
                 self.response.write("OK") 
             else:
                 logging.info("SendMention could not fetch %s to check for webmention" % (mention.target))
