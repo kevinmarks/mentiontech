@@ -124,19 +124,20 @@ class ListMentions(webapp2.RequestHandler):
     def get(self):
         target,targetdomain= geturlanddomain(self.request.get('target'))
         targetkey = ndb.Key('Domain', targetdomain)
-        mentionquery = Mention.query(ancestor = targetkey).filter(Mention.targetdomain==targetdomain).order(-Mention.updated)
+        logging.info("ListMentions target:%s targetdomain %s" % (target,targetdomain))
+        mentionquery = Mention.query(ancestor = targetkey).order(-Mention.updated)
         mentions = mentionquery.fetch(20)
         for mention in mentions:
             mention.humancreated = humanize.naturaltime(mention.created)
             mention.humanupdated = humanize.naturaltime(mention.updated)
         template_values={'mentions':mentions}
         
-        template = JINJA_ENVIRONMENT.get_template(page+'.html')
+        template = JINJA_ENVIRONMENT.get_template('main.html')
         self.response.write(template.render(template_values))
 
 app = webapp2.WSGIApplication([
     ('/webmention', WebmentionHandler),
     ('/verifymention/([^/]+)?', VerifyMention),
-    ('listmentions',ListMentions),
+    ('/listmentions',ListMentions),
     ('/([^/]+)?', MainHandler),
 ], debug=True)

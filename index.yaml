@@ -9,3 +9,16 @@ indexes:
 # manually, move them above the marker line.  The index.yaml file is
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
+
+- kind: Mention
+  ancestor: yes
+  properties:
+  - name: targetdomain
+  - name: updated
+    direction: desc
+
+- kind: Mention
+  ancestor: yes
+  properties:
+  - name: updated
+    direction: desc
