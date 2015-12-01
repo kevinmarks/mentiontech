@@ -22,3 +22,10 @@ indexes:
   properties:
   - name: updated
     direction: desc
+
+- kind: Mention
+  ancestor: yes
+  properties:
+  - name: verified
+  - name: updated
+    direction: desc

@@ -13,6 +13,7 @@ import logging
 import humanize
 import mf2py
 import requests
+import json
 
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
@@ -189,17 +190,34 @@ class SendMention(webapp2.RequestHandler):
 class ListMentions(webapp2.RequestHandler):
     def get(self):
         target,targetdomain= geturlanddomain(self.request.get('target'))
+        unverified = self.request.get('unverified','off') == 'on'
+        jsonformat = self.request.get('json','off') == 'on'
         targetkey = ndb.Key('Domain', targetdomain)
-        logging.info("ListMentions target:%s targetdomain %s" % (target,targetdomain))
-        mentionquery = Mention.query(ancestor = targetkey).order(-Mention.updated)
-        mentions = mentionquery.fetch(20)
-        for mention in mentions:
-            mention.humancreated = humanize.naturaltime(mention.created)
-            mention.humanupdated = humanize.naturaltime(mention.updated)
-        template_values={'mentions':mentions}
         
-        template = JINJA_ENVIRONMENT.get_template('main.html')
-        self.response.write(template.render(template_values))
+        logging.info("ListMentions target:%s targetdomain %s unverified %s json %s" % (target,targetdomain,unverified,json))
+        if unverified:
+            mentionquery = Mention.query(ancestor = targetkey).order(-Mention.updated)
+        else:
+            mentionquery = Mention.query(ancestor = targetkey).filter(Mention.verified==True).order(-Mention.updated)
+        mentions = mentionquery.fetch(20)
+        if jsonformat:
+            jsonout=[]
+            for mention in mentions:
+                jsonout.append({
+                  "type": "entry",
+                  "published": mention.created.isoformat(),
+                  "url": mention.source,
+                })
+            self.response.headers['Content-Type'] = 'application/json'
+            self.response.write(json.dumps(jsonout))
+        else:
+            for mention in mentions:
+                mention.humancreated = humanize.naturaltime(mention.created)
+                mention.humanupdated = humanize.naturaltime(mention.updated)
+            template_values={'mentions':mentions,'targetdomain':targetdomain}
+        
+            template = JINJA_ENVIRONMENT.get_template('main.html')
+            self.response.write(template.render(template_values))
 
 app = webapp2.WSGIApplication([
     ('/webmention', WebmentionHandler),

@@ -7,9 +7,9 @@
  
 </article>
 <form method="post" action="/webmention" >
-      <div>source:<input name="source" type="url" required></input></div>
-      <div>target:<input name="target" type="url" required></input></div>
-      <div>property:<input name="property" type="text" ></input>(property is an <a href="http://csarven.ca/webmention">experimental extension</a> - I think it is redundant)</div>
+      <div>source:<input name="source" type="url" required></div>
+      <div>target:<input name="target" type="url" required></div>
+      <div>property:<input name="property" type="text" > (property is an <a rel="vote-against" class="u-in-reply-to" href="http://csarven.ca/webmention">experimental extension</a> - I think it is redundant)</div>
       <div><input type="submit" value="send webmention"></div>
 </form>
 {% for mention in mentions %}
@@ -17,7 +17,9 @@
 {% endfor %}
 <h2>find mentions for a domain</h2>
 <form method="get" action="/listmentions" >
-      <div>target:<input name="target" type="url" required></input></div>
+      <div>target:<input name="target" type="url" required value="{{targetdomain}}"</div>
+      <div><input name="unverified" type="checkbox" label="show unverified" ><label>show unverified</label></div>
+      <div><input name="json" type="checkbox" label="json"><label>json</label></div>
       <div><input type="submit" value="find mentions"></div>
 </form>
 {% endblock %}
