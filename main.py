@@ -199,11 +199,17 @@ class ListMentions(webapp2.RequestHandler):
             mentionquery = Mention.query(ancestor = targetkey).order(-Mention.updated)
         else:
             mentionquery = Mention.query(ancestor = targetkey).filter(Mention.verified==True).order(-Mention.updated)
-        mentions = mentionquery.fetch(20)
+        rawmentions = mentionquery.fetch(100)
+        mentions=[]
+        logging.info("listmentions got %s mentions for %s" % (len(rawmentions),target))
+        for mention in rawmentions:
+            logging.info("rawmention.target '%s' target '%s' %s" % (mention.target,target,mention.target.startswith(target)))
+            if mention.target.startswith(target):
+                mentions.append(mention)
         if jsonformat:
-            jsonout=[]
+            jsonout={'type':'feed','children':[]}
             for mention in mentions:
-                jsonout.append({
+                jsonout['children'].append({
                   "type": "entry",
                   "published": mention.created.isoformat(),
                   "url": mention.source,
