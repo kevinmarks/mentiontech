@@ -14,6 +14,7 @@ import humanize
 import mf2py
 import requests
 import json
+import mf2tojf2
 
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
@@ -40,6 +41,8 @@ class Mention(ndb.Model):
     targetdomain = ndb.StringProperty(indexed=True)
     sourceHTML = ndb.TextProperty(indexed=False)
     targetHTML = ndb.TextProperty(indexed=False)
+    sourcejf2 = ndb.TextProperty(indexed=False)
+    targetjf2 = ndb.TextProperty(indexed=False)
     created = ndb.DateTimeProperty(auto_now_add=True) #creation date
     updated = ndb.DateTimeProperty(auto_now=True) #updated date
     verified = ndb.BooleanProperty(indexed=True,default=None)
@@ -52,6 +55,14 @@ def geturlanddomain(url):
     urlbits= list(urlparse.urlsplit(url))
     domain = urlbits[1]
     return url, domain
+        
+        
+
+def htmltomfjf(html,url,mf2=None):
+    if not mf2:
+        mf2 = mf2py.Parser(html, url).to_dict()
+    jf2 = mf2tojf2.mf2tojf2(mf2)
+    return mf2,jf2
 
 
 class MainHandler(webapp2.RequestHandler):
@@ -122,6 +133,8 @@ class VerifyMention(webapp2.RequestHandler):
                 logging.info("VerifyMention result.content %s " % (result.content[:500]))
                 logging.info("VerifyMention result.headers %s " % (result.headers))
                 mention.sourceHTML = unicode(result.content,'utf-8')
+                mf2,jf2 = htmltomfjf(result.content, url=mention.source)
+                mention.sourcejf2 = json.dumps(jf2)
                 if mention.target in mention.sourceHTML:
                     mention.verified = True
                     logging.info("VerifyMention %s does link to %s" % (mention.source,mention.target))
@@ -136,7 +149,7 @@ class VerifyMention(webapp2.RequestHandler):
                 self.response.write("OK") 
             else:
                 logging.info("VerifyMention could not fetch %s to check for %s" % (mention.source,mention.target))
-                self.response.write("Fetch fail - error: "+result.status_code) 
+                self.response.write("Fetch fail - error: %s" % (result.status_code)) 
         else:
             self.response.write("No mention")
 
@@ -158,7 +171,8 @@ class SendMention(webapp2.RequestHandler):
                         url=link.split(';')[0].strip('<> ')
                         logging.info("SendMention found endpoint '%s' in %s " % (url,link))
                         endpoints.add(url)
-                mf2 = mf2py.Parser(result.content, url=mention.target).to_dict()
+                mf2,jf2 = htmltomfjf(result.content, url=mention.target)
+                mention.targetjf2 = json.dumps(jf2)
                 for url in mf2.get("rels",{}).get("webmention",[]):
                     logging.info("SendMention found endpoint '%s' in rels " % (url))
                     endpoints.add(url)
@@ -209,11 +223,14 @@ class ListMentions(webapp2.RequestHandler):
         if jsonformat:
             jsonout={'type':'feed','children':[]}
             for mention in mentions:
-                jsonout['children'].append({
-                  "type": "entry",
-                  "published": mention.created.isoformat(),
-                  "url": mention.source,
-                })
+                if mention.sourcejf2:
+                    jsonout['children'].append(json.loads(mention.sourcejf2))
+                else:
+                    jsonout['children'].append({
+                      "type": "entry",
+                      "published": mention.created.isoformat(),
+                      "url": mention.source,
+                    })
             self.response.headers['Content-Type'] = 'application/json'
             self.response.write(json.dumps(jsonout))
         else:
