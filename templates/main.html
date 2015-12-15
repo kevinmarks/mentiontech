@@ -9,7 +9,6 @@
 <form method="post" action="/webmention" >
       <div>source:<input name="source" type="url" required></div>
       <div>target:<input name="target" type="url" required></div>
-      <div>property:<input name="property" type="text" > (property is an <a rel="vote-against" class="u-in-reply-to" href="http://csarven.ca/webmention">experimental extension</a> - I think it is redundant)</div>
       <div><input type="submit" value="send webmention"></div>
 </form>
 {% for mention in mentions %}
