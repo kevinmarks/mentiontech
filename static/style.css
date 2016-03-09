@@ -4,3 +4,8 @@ background-color: whitesmoke;
 p {font-size: 20px; font-size: 1.25rem; line-height: 28px; line-height: 1.75rem;}
 article {background-color: white;}
 .u-logo {height:1em;}
+div.h-entry {margin-bottom:.5em;}
+blockquote.auto-mention {font-size:.9em; border: 1px solid lightgray; border-radius: 4px; max-width: 25em; padding: .9em; background:white;}
+blockquote.auto-mention cite {font-style:normal; font-weight:bold;}
+blockquote.auto-mention p {font-size:.9em;  line-height:1em; margin:0;}
+blockquote.auto-mention a {text-decoration:none; color:black;}

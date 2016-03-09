@@ -32,5 +32,5 @@ def mf2tojf2(mf2):
     jf2={}
     items = mf2.get("items",[])
     jf2=flattenProperties(items)
-    print mf2, jf2
+    #print mf2, jf2
     return jf2

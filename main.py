@@ -15,6 +15,9 @@ import mf2py
 import requests
 import json
 import mf2tojf2
+import cassis
+
+import cloudstorage as gcs
 
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
@@ -77,6 +80,8 @@ class MainHandler(webapp2.RequestHandler):
         for mention in mentions:
             mention.humancreated = humanize.naturaltime(mention.created)
             mention.humanupdated = humanize.naturaltime(mention.updated)
+            mention.prettytarget=cassis.auto_link(mention.target,do_embed=True,maxUrlLength=80)
+            mention.prettysource=cassis.auto_link(mention.source,do_embed=True,maxUrlLength=80)
         template_values={'mentions':mentions}
         
         template = JINJA_ENVIRONMENT.get_template(page+'.html')
@@ -130,12 +135,15 @@ class VerifyMention(webapp2.RequestHandler):
         if mention:
             result = urlfetch.fetch(mention.source)
             if result.status_code == 200:
-                logging.info("VerifyMention result.content %s " % (result.content[:500]))
+                logging.info("VerifyMention result.content %s " % (result.content[:200]))
                 logging.info("VerifyMention result.headers %s " % (result.headers))
-                mention.sourceHTML = unicode(result.content,'utf-8')
+                mention.sourceHTML = '/mention-tech-cache/' + urllib.quote(mention.source,'')
+#                gcs_file = gcs.open(mention.sourceHTML, 'w', content_type='text/html')
+#                gcs_file.write(result.content)
+#                gcs_file.close()
                 mf2,jf2 = htmltomfjf(result.content, url=mention.source)
                 mention.sourcejf2 = json.dumps(jf2)
-                if mention.target in mention.sourceHTML:
+                if mention.target in unicode(result.content,'utf-8'):
                     mention.verified = True
                     logging.info("VerifyMention %s does link to %s" % (mention.source,mention.target))
                 else:
@@ -164,7 +172,7 @@ class SendMention(webapp2.RequestHandler):
             if result.status_code == 200:
                 endpoints=set([])
                 logging.info("SendMention result.headers %s " % (result.headers))
-                logging.info("SendMention result.content %s " % (result.content[:500]))
+                logging.info("SendMention result.content %s " % (result.content[:200]))
                 links = result.headers.get('link','').split(',')
                 for link in links:
                     if "webmention" in link:
@@ -176,7 +184,10 @@ class SendMention(webapp2.RequestHandler):
                 for url in mf2.get("rels",{}).get("webmention",[]):
                     logging.info("SendMention found endpoint '%s' in rels " % (url))
                     endpoints.add(url)
-                mention.targetHTML = unicode(result.content,'utf-8')
+                mention.targetHTML = '/mention-tech-cache/' + urllib.quote(mention.target,'')
+#                gcs_file = gcs.open(mention.targetHTML, 'w', content_type='text/html')
+#                gcs_file.write(result.content)
+#                gcs_file.close()
                 mention.put()
                 for endpoint in endpoints:
                     if 'mention-tech' in endpoint:
@@ -237,6 +248,8 @@ class ListMentions(webapp2.RequestHandler):
             for mention in mentions:
                 mention.humancreated = humanize.naturaltime(mention.created)
                 mention.humanupdated = humanize.naturaltime(mention.updated)
+                mention.prettytarget=cassis.auto_link(mention.target,do_embed=True,maxUrlLength=80)
+                mention.prettysource=cassis.auto_link(mention.source,do_embed=True,maxUrlLength=80)
             template_values={'mentions':mentions,'targetdomain':targetdomain}
         
             template = JINJA_ENVIRONMENT.get_template('main.html')
