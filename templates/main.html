@@ -13,7 +13,7 @@
 </form>
 
 {% for mention in mentions %}
-    <div class="h-entry"><time class="dt-published" datetime="{{mention.created}}">{{mention.humancreated }}</time> <span class="h-card p-author" >{{mention.prettysource|safe}}</span> {%if mention.property %}sent '{{mention.property}}' to{% else %}mentioned{% endif %} {{mention.prettytarget|safe}} {% if mention.verified==True %}✅{%elif mention.verified==False %}❌{% endif %} <time class="dt-updated" datetime="{{mention.updated}}">{{mention.humanupdated}}</time></div>
+    <div class="h-entry"><time class="dt-published" datetime="{{mention.created}}">{{mention.humancreated }}</time> <div class="h-card p-author" >{{mention.prettysource|safe}}</div> {%if mention.property %}sent '{{mention.property}}' to{% else %}mentioned{% endif %} {{mention.prettytarget|safe}} {% if mention.verified==True %}✅{%elif mention.verified==False %}❌{% endif %} <time class="dt-updated" datetime="{{mention.updated}}">{{mention.humanupdated}}</time> {{mention.sendOnState|default('')}}</div>
 {% endfor %}
 <h2>find mentions for a domain</h2>
 <form method="get" action="/listmentions" >
