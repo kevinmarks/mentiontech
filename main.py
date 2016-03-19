@@ -16,6 +16,7 @@ import requests
 import json
 import mf2tojf2
 import cassis
+import ssl
 
 import cloudstorage as gcs
 
@@ -23,7 +24,7 @@ from google.appengine.api import urlfetch
 from google.appengine.api import memcache
 from google.appengine.api import taskqueue
 
-urlfetch.set_default_fetch_deadline(40)
+urlfetch.set_default_fetch_deadline(180)
 
 useragent = 'mention.tech/0.1 like Mozilla'
 
@@ -133,7 +134,7 @@ class VerifyMention(webapp2.RequestHandler):
         logging.info("VerifyMention got key %s " % (mention_key))
         mention = mention_key.get()
         if mention:
-            result = urlfetch.fetch(mention.source)
+            result = urlfetch.fetch(mention.source,deadline=240)
             if result.status_code == 200:
                 logging.info("VerifyMention result.content %s " % (result.content[:200]))
                 logging.info("VerifyMention result.headers %s " % (result.headers))
@@ -168,7 +169,7 @@ class SendMention(webapp2.RequestHandler):
         logging.info("SendMention got key %s " % (mention_key))
         mention = mention_key.get()
         if mention:
-            result = urlfetch.fetch(mention.target)
+            result = urlfetch.fetch(mention.target,deadline=240)
             if result.status_code == 200:
                 endpoints=set([])
                 logging.info("SendMention result.headers %s " % (result.headers))
@@ -199,14 +200,24 @@ class SendMention(webapp2.RequestHandler):
                             params["property"]=mention.property
                         logging.info("SendMention calling '%s' " % (url))
                         if 1:
-                            result = requests.post(endpoint, data=params)
-                            logging.info("SendMention got '%s' %s" % (result.status_code,result.reason))
+                            form_data = urllib.urlencode(params)
+                            result = urlfetch.fetch(url=endpoint, deadline=240,
+                                payload=form_data,
+                                method=urlfetch.POST,
+                                headers={'Content-Type': 'application/x-www-form-urlencoded'})
+                            logging.info("SendMention POST to %s got '%s'" % (endpoint,result.status_code))
+                            mention.sendOnState = "mention sent '%s' " % (result.status_code)
+                            mention.put()
                         else:
                             logging.info("SendMention barfed posting to '%s' " % (url))
+                            mention.sendOnState = "SendMention barfed posting to '%s' " % (url)
+                            mention.put()
                 self.response.write("OK") 
             else:
                 logging.info("SendMention could not fetch %s to check for webmention" % (mention.target))
                 self.response.write("Fetch fail - error: %s" % (result.status_code)) 
+                mention.sendOnState = "could not fetch %s '%s' %s" % (mention.target,result.status_code,result.reason)
+                mention.put()
         else:
             self.response.write("No mention")
 
@@ -249,7 +260,23 @@ class ListMentions(webapp2.RequestHandler):
                 mention.humancreated = humanize.naturaltime(mention.created)
                 mention.humanupdated = humanize.naturaltime(mention.updated)
                 mention.prettytarget=cassis.auto_link(mention.target,do_embed=True,maxUrlLength=80)
-                mention.prettysource=cassis.auto_link(mention.source,do_embed=True,maxUrlLength=80)
+                if mention.sourcejf2:
+                    name=mention.source
+                    jf = json.loads(mention.sourcejf2)
+                    logging.info("ListMentions type %s " % (jf.get("type","")))
+                    if jf.get("type","") == "feed":
+                        kids= jf.get("children",[{}])
+                        logging.info("ListMentions children %s " % (kids[0]))
+                        post = kids[0]
+                    elif jf.get("type","") == "entry":
+                        logging.info("ListMentions entry %s " % (jf))
+                        post= jf
+                    name= post.get("name",mention.source)
+                    content = post.get("content",name)
+                    
+                    mention.prettysource=cassis.auto_link(content,do_embed=True,maxUrlLength=80)
+                else:
+                    mention.prettysource=cassis.auto_link(mention.source,do_embed=True,maxUrlLength=80)
             template_values={'mentions':mentions,'targetdomain':targetdomain}
         
             template = JINJA_ENVIRONMENT.get_template('main.html')
