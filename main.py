@@ -88,6 +88,34 @@ class MainHandler(webapp2.RequestHandler):
         template = JINJA_ENVIRONMENT.get_template(page+'.html')
         self.response.write(template.render(template_values))
 
+class Publish(webapp2.RequestHandler):
+    def get(self):
+        template_values={'micropub_url':''}
+        template = JINJA_ENVIRONMENT.get_template('publish.html')
+        self.response.write(template.render(template_values))
+    def post(self):
+        site,sitedomain= geturlanddomain(self.request.get('site'))
+        reply_to,replydomain= geturlanddomain(self.request.get('in-reply-to'))
+        name = self.request.get('name')
+        result = urlfetch.fetch(site,deadline=60)
+        if result.status_code == 200:
+            endpoints=set([])
+            logging.info("Publish result.headers %s " % (result.headers))
+            links = result.headers.get('link','').split(',')
+            for link in links:
+                if "micropub" in link:
+                    url=link.split(';')[0].strip('<> ')
+                    logging.info("Publish found endpoint '%s' in %s " % (url,link))
+                    endpoints.add(url)
+            mf2,jf2 = htmltomfjf(result.content, url=site)
+            for url in mf2.get("rels",{}).get("micropub",[]):
+                logging.info("Publish found endpoint '%s' in rels " % (url))
+                endpoints.add(url)
+        template_values={'micropub_url':list(endpoints)[0],'site':site,'reply_to':reply_to,'name':name}
+        template = JINJA_ENVIRONMENT.get_template('publish.html')
+        self.response.write(template.render(template_values))
+
+
 class WebmentionHandler(webapp2.RequestHandler):
     def post(self):
         source,sourcedomain = geturlanddomain(self.request.get('source'))
@@ -287,5 +315,6 @@ app = webapp2.WSGIApplication([
     ('/verifymention/(.*)', VerifyMention),
     ('/sendmention/(.*)', SendMention),
     ('/listmentions',ListMentions),
+    ('/publish',Publish),
     ('/([^/]+)?', MainHandler),
 ], debug=True)

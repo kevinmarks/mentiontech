@@ -1,0 +1,11 @@
+{% extends "generic.html" %}
+{% block content %}
+<form method="post" action="/publish" >
+      <div>micropub:<input name="micropub" type="url" value={{micropub_url}}></div>
+      <div>site:<input name="site" type="url" required value={{site}}></div>
+      <div>name:<input name="name" type="text" required value={{name}}></div>
+      <div>in-reply-to:<input name="in-reply-to" type="url" value={{reply_to}} ></div>
+      <div><input type="submit" value="post"></div>
+</form>
+
+{% endblock %}
