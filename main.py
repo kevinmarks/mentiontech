@@ -74,7 +74,7 @@ class MainHandler(webapp2.RequestHandler):
         if path is None:
             path=""
         page=path.strip().split('.')[0]
-        if page not in ('main','about'):
+        if page not in ('main','about','testing'):
             page='main'
         mentionquery = Mention.query().order(-Mention.updated)
         mentions = mentionquery.fetch(20)
@@ -104,7 +104,7 @@ class Publish(webapp2.RequestHandler):
             links = result.headers.get('link','').split(',')
             for link in links:
                 if "micropub" in link:
-                    url=link.split(';')[0].strip('<> ')
+                    url = urlparse.urljoin(site,link.split(';')[0].strip('<> '))
                     logging.info("Publish found endpoint '%s' in %s " % (url,link))
                     endpoints.add(url)
             mf2,jf2 = htmltomfjf(result.content, url=site)
@@ -205,7 +205,7 @@ class SendMention(webapp2.RequestHandler):
                 links = result.headers.get('link','').split(',')
                 for link in links:
                     if "webmention" in link:
-                        url=link.split(';')[0].strip('<> ')
+                        url = urlparse.urljoin(mention.target,link.split(';')[0].strip('<> '))
                         logging.info("SendMention found endpoint '%s' in %s " % (url,link))
                         endpoints.add(url)
                 mf2,jf2 = htmltomfjf(result.content, url=mention.target)
