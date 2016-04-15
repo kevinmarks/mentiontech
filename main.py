@@ -199,7 +199,7 @@ class SendMention(webapp2.RequestHandler):
         if mention:
             result = urlfetch.fetch(mention.target,deadline=240)
             if result.status_code == 200:
-                endpoints=set([])
+                endpoints=[]
                 logging.info("SendMention target result.headers %s " % (result.headers))
                 logging.info("SendMention target result.content %s " % (result.content[:200]))
                 links = result.headers.get('link','').split(',')
@@ -207,18 +207,19 @@ class SendMention(webapp2.RequestHandler):
                     if "webmention" in link:
                         url = urlparse.urljoin(mention.target,link.split(';')[0].strip('<> '))
                         logging.info("SendMention found endpoint '%s' in %s " % (url,link))
-                        endpoints.add(url)
+                        endpoints.append(url)
                 mf2,jf2 = htmltomfjf(result.content, url=mention.target)
                 mention.targetjf2 = json.dumps(jf2)
                 for url in mf2.get("rels",{}).get("webmention",[]):
                     logging.info("SendMention found endpoint '%s' in rels " % (url))
-                    endpoints.add(url)
+                    endpoints.append(url)
                 mention.targetHTML = '/mention-tech-cache/' + urllib.quote(mention.target,'')
 #                gcs_file = gcs.open(mention.targetHTML, 'w', content_type='text/html')
 #                gcs_file.write(result.content)
 #                gcs_file.close()
                 mention.put()
                 postworked = False
+                logging.info("endpoints %s" % endpoints)
                 for endpoint in endpoints:
                     if 'mention-tech' in endpoint:
                         logging.info("SendMention skipping '%s' " % (endpoint))
@@ -227,7 +228,6 @@ class SendMention(webapp2.RequestHandler):
                         params = {"source":mention.source,"target":mention.target}
                         if mention.property:
                             params["property"]=mention.property
-                        logging.info("SendMention calling '%s' " % (url))
                         if not postworked:
                             form_data = urllib.urlencode(params)
                             result = urlfetch.fetch(url=endpoint, deadline=240,
