@@ -12,8 +12,11 @@
 <link rel="apple-touch-icon" href="/static/logo.jpg" />
 <link href="/static/style.css" media="all" rel="stylesheet" type="text/css" />
 <link rel="webmention" href="http://mention-tech.appspot.com/webmention" />
-<script>if (window.location.includes('genius.it')) {
-    window.top = document.baseuri;
+<script>var loc = window.location.href; 
+if (loc.includes('genius.it')) {
+    offset = loc.indexOf('genius.it');
+    newloc = loc.slice(0,offset)+ loc.slice(offset+'genius.it/'.length);
+    window.location.replace(newloc);
     }
 </script>
 </head>  
@@ -21,7 +24,7 @@
 <nav><img class="u-logo" src="/static/logo.jpg" /><a href="/" >Home</a></nav>
 {% block content %}
 {% endblock %}
-<footer>A webmention experiment by <a rel="me" href="http://kevinmarks.com">Kevin Marks</a> code at <a rel="me" href="https://github.com/kevinmarks/mentiontech">github</a> <a rel="me" href="https://twitter.com/mention_tech/">@mention_tech</a></footer>
+<footer >A webmention experiment by <a class="h-card" href="http://kevinmarks.com">Kevin Marks</a> code at <a href="https://github.com/kevinmarks/mentiontech">github</a> <a rel="me" href="https://twitter.com/mention_tech/">@mention_tech</a></footer>
 </body>
 {% endautoescape %}
 </html>
