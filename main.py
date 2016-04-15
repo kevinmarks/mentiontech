@@ -200,8 +200,8 @@ class SendMention(webapp2.RequestHandler):
             result = urlfetch.fetch(mention.target,deadline=240)
             if result.status_code == 200:
                 endpoints=set([])
-                logging.info("SendMention result.headers %s " % (result.headers))
-                logging.info("SendMention result.content %s " % (result.content[:200]))
+                logging.info("SendMention target result.headers %s " % (result.headers))
+                logging.info("SendMention target result.content %s " % (result.content[:200]))
                 links = result.headers.get('link','').split(',')
                 for link in links:
                     if "webmention" in link:
@@ -218,6 +218,7 @@ class SendMention(webapp2.RequestHandler):
 #                gcs_file.write(result.content)
 #                gcs_file.close()
                 mention.put()
+                postworked = False
                 for endpoint in endpoints:
                     if 'mention-tech' in endpoint:
                         logging.info("SendMention skipping '%s' " % (endpoint))
@@ -227,19 +228,20 @@ class SendMention(webapp2.RequestHandler):
                         if mention.property:
                             params["property"]=mention.property
                         logging.info("SendMention calling '%s' " % (url))
-                        if 1:
+                        if not postworked:
                             form_data = urllib.urlencode(params)
                             result = urlfetch.fetch(url=endpoint, deadline=240,
                                 payload=form_data,
                                 method=urlfetch.POST,
                                 headers={'Content-Type': 'application/x-www-form-urlencoded'})
                             logging.info("SendMention POST to %s got '%s'" % (endpoint,result.status_code))
+                            logging.info("SendMention POST to %s result.content %s " % (endpoint,result.content[:1000]))
                             mention.sendOnState = "mention sent '%s' " % (result.status_code)
+                            if result.status_code < 300:
+                                postworked = True
                             mention.put()
                         else:
-                            logging.info("SendMention barfed posting to '%s' " % (url))
-                            mention.sendOnState = "SendMention barfed posting to '%s' " % (url)
-                            mention.put()
+                            logging.info("SendMention skipped posting to '%s' " % (url))
                 self.response.write("OK") 
             else:
                 logging.info("SendMention could not fetch %s to check for webmention" % (mention.target))
