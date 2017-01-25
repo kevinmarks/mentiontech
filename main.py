@@ -312,11 +312,30 @@ class ListMentions(webapp2.RequestHandler):
             template = JINJA_ENVIRONMENT.get_template('main.html')
             self.response.write(template.render(template_values))
 
+class ArchiveHandler(webapp2.RequestHandler):
+  def post(self):
+    status="pending"
+    sendurl,domain = geturlanddomain(self.request.get('url'))
+    if not sendurl:
+        status="no url"
+    else:
+        url = "https://web.archive.org/save/" + sendurl
+        logging.info("ArchiveHandler save url is '%s' " % url)
+        urlfetch.set_default_fetch_deadline(180)
+        result = urlfetch.fetch(url)
+        if result.status_code == 200:
+          status="saved to archive.org"
+        else:
+            status="error from service: %s" %(result.status_code)
+    logging.info("ArchiveHandler "+ sendurl +" status: " + status)
+    self.response.write("ArchiveHandler "+ sendurl +" status: " + status) 
+
 app = webapp2.WSGIApplication([
     ('/webmention', WebmentionHandler),
     ('/verifymention/(.*)', VerifyMention),
     ('/sendmention/(.*)', SendMention),
     ('/listmentions',ListMentions),
     ('/publish',Publish),
+    ('/sendtoarchive', ArchiveHandler),
     ('/([^/]+)?', MainHandler),
 ], debug=True)
