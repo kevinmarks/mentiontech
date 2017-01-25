@@ -153,6 +153,8 @@ class WebmentionHandler(webapp2.RequestHandler):
             taskurl = '/verifymention/'+mentionkey.urlsafe()
             logging.info("WebmentionHandler: - queuing task '%s'"  % (taskurl))
             taskqueue.add(url=taskurl)
+            taskqueue.add(url='/sendtoarchive',params={'url':source})
+            taskqueue.add(url='/sendtoarchive',params={'url':target})
             template = JINJA_ENVIRONMENT.get_template('response.html')
         self.response.write(template.render(template_values))
 
