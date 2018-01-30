@@ -332,6 +332,40 @@ class ArchiveHandler(webapp2.RequestHandler):
     logging.info("ArchiveHandler "+ sendurl +" status: " + status)
     self.response.write("ArchiveHandler "+ sendurl +" status: " + status) 
 
+class ArchivePullHandler(webapp2.RequestHandler):
+  def get(self):
+    status="pending"
+    sendurl,domain = geturlanddomain(self.request.get('url'))
+    if not sendurl:
+        status="no url"
+    else:
+        url = "http://archive.org/wayback/available?url=" + sendurl
+        logging.info("ArchiveHandler get url is '%s' " % url)
+        urlfetch.set_default_fetch_deadline(180)
+        result = urlfetch.fetch(url)
+        if result.status_code == 200:
+            status="archive checked"
+            output =result.content
+            snapshot = json.loads(result.content)
+            url = snapshot.get("archived_snapshots",{}).get("closest",{}).get("url")
+            if url:
+                bits = list(url.split('/'))
+                bits[4]=bits[4]+'id_'
+                rawurl = '/'.join(bits)
+                res2 = urlfetch.fetch(rawurl)
+                if res2.status_code == 200:
+                    status="found in archive"
+                    output =res2.content
+            else:
+                status="archive missed"
+                output ="ArchivePullHandler "+ sendurl +" status: " + status
+                self.response.status_int = 404
+        else:
+            status="error from service: %s" %(result.status_code)
+            output ="ArchivePullHandler "+ sendurl +" status: " + status
+    logging.info("ArchivePullHandler "+ sendurl +" status: " + status)
+    self.response.write(output) 
+
 app = webapp2.WSGIApplication([
     ('/webmention', WebmentionHandler),
     ('/verifymention/(.*)', VerifyMention),
@@ -339,5 +373,6 @@ app = webapp2.WSGIApplication([
     ('/listmentions',ListMentions),
     ('/publish',Publish),
     ('/sendtoarchive', ArchiveHandler),
+    ('/getfromarchive', ArchivePullHandler),
     ('/([^/]+)?', MainHandler),
 ], debug=True)
