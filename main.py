@@ -356,6 +356,7 @@ class ArchivePullHandler(webapp2.RequestHandler):
                 if res2.status_code == 200:
                     status="found in archive"
                     output =res2.content
+                    self.response.headers['Content-Type'] = res2.headers['Content-Type']
             else:
                 status="archive missed"
                 output ="ArchivePullHandler "+ sendurl +" status: " + status
