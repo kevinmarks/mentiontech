@@ -293,6 +293,7 @@ class ListMentions(webapp2.RequestHandler):
                 mention.humanupdated = humanize.naturaltime(mention.updated)
                 mention.prettytarget=cassis.auto_link(mention.target,do_embed=True,maxUrlLength=80)
                 if mention.sourcejf2:
+                    post={}
                     name=mention.source
                     jf = json.loads(mention.sourcejf2)
                     logging.info("ListMentions type %s " % (jf.get("type","")))
