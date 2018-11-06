@@ -17,6 +17,7 @@ import json
 import mf2tojf2
 import cassis
 import ssl
+import absrel
 
 import cloudstorage as gcs
 
@@ -115,6 +116,71 @@ class Publish(webapp2.RequestHandler):
         template = JINJA_ENVIRONMENT.get_template('publish.html')
         self.response.write(template.render(template_values))
 
+def findCardFeedEntries(item,hcard,hfeed,hentries):
+    if not hcard and item["type"][0].startswith('h-card'):
+        hcard = item
+    if not hcard and "author" in item["properties"] and type(item["properties"]["author"][0]) is dict and item["properties"]["author"][0]["type"][0].startswith('h-card'):
+        hcard= item["properties"]["author"][0]
+    if not hfeed and item["type"][0].startswith('h-feed'):
+        hfeed=item
+    if item["type"][0].startswith('h-entry') or item["type"][0].startswith('h-cite'):
+        hentries.append(item)
+    return hcard,hfeed,hentries
+
+def getTextOrHTML(item):
+    if len(item) <1:
+        return '' 
+    if type(item[0]) is dict:
+        return item[0]["html"]
+    else:
+        return " ".join(item)
+
+def getTextOrValue(item):
+    if len(item) <1:
+        return '' 
+    if type(item[0]) is dict:
+        return item[0]["value"]
+    else:
+        return " ".join(item)
+
+class MentionAll(webapp2.RequestHandler):
+    def get(self):
+        template = JINJA_ENVIRONMENT.get_template('mentionall.html')
+        template_values = {"url":'',"content":'',"links":[]}
+        self.response.write(template.render(template_values))
+        
+    def post(self):
+        linkedurls=[]
+        url,urldomain= geturlanddomain(self.request.get('url'))
+        result = urlfetch.fetch(url,deadline=60)
+        if result.status_code == 200:
+            mf2,jf = htmltomfjf(result.content, url=url)
+            hcard=None
+            hfeed=None
+            hentries=[]
+            linkedurls=[]
+            contents=[]
+            if mf2:
+                for item in mf2["items"]:
+                    hcard,hfeed,hentries = findCardFeedEntries(item,hcard,hfeed,hentries)
+                    for subitem in item.get("children",[]):
+                        hcard,hfeed,hentries = findCardFeedEntries(subitem,hcard,hfeed,hentries)
+                if hfeed:
+                    if not hentries:
+                        for item in hfeed.get("children",[]):
+                            hcard,hfeed,hentries = findCardFeedEntries(item,hcard,hfeed,hentries)
+                if hentries:
+                    for entry in hentries:
+                        content=getTextOrHTML(entry["properties"].get("content",[]))
+                        linkedurls.extend(absrel.geturls(content,url))
+                        contents.append(content)
+            logging.info("MentionAll links %s " % (linkedurls))
+            for link in linkedurls:
+                taskqueue.add(url='/webmention',params={'source':url,'target':link})
+        template = JINJA_ENVIRONMENT.get_template('mentionall.html')
+        template_values = {"url":url,"content":"<p>".join(contents),"links":linkedurls}
+        self.response.write(template.render(template_values))
+
 
 class WebmentionHandler(webapp2.RequestHandler):
     def post(self):
@@ -168,7 +234,7 @@ class VerifyMention(webapp2.RequestHandler):
             if result.status_code == 200:
                 logging.info("VerifyMention result.content %s " % (result.content[:200]))
                 logging.info("VerifyMention result.headers %s " % (result.headers))
-                mention.sourceHTML = '/mention-tech-cache/' + urllib.quote(mention.source,'')
+                mention.sourceHTML = '/mention-tech-cache/' + urllib.quote(mention.source.encode('utf-8'),'')
 #                gcs_file = gcs.open(mention.sourceHTML, 'w', content_type='text/html')
 #                gcs_file.write(result.content)
 #                gcs_file.close()
@@ -322,7 +388,7 @@ class ArchiveHandler(webapp2.RequestHandler):
     if not sendurl:
         status="no url"
     else:
-        url = "https://web.archive.org/save/" + sendurl
+        url = "https://web.archive.org/save/" + sendurl.encode('utf-8')
         logging.info("ArchiveHandler save url is '%s' " % url)
         urlfetch.set_default_fetch_deadline(180)
         result = urlfetch.fetch(url)
@@ -373,6 +439,7 @@ app = webapp2.WSGIApplication([
     ('/verifymention/(.*)', VerifyMention),
     ('/sendmention/(.*)', SendMention),
     ('/listmentions',ListMentions),
+    ('/mentionall',MentionAll),
     ('/publish',Publish),
     ('/sendtoarchive', ArchiveHandler),
     ('/getfromarchive', ArchivePullHandler),

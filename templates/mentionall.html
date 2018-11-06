@@ -1,0 +1,13 @@
+{% extends "generic.html" %}
+{% block content %}
+
+<form method="post" action="/mentionall" >
+      <div>url:<input name="url" type="url" required></div>
+      <div><input type="submit" value="mention links"></div>
+</form>
+<h2>Links for {{url}}</h2>
+<div>{{content|safe}}</div>
+{% for link in links %}
+    <p><a href="{{link}}">{{link}}</a>
+{% endfor %}
+{% endblock %}

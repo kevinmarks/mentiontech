@@ -15,6 +15,10 @@
       <div>url:<input name="url" type="url" required></div>
       <div><input type="submit" value="send page to archive"></div>
 </form>
+<form method="post" action="/mentionall" >
+      <div>url:<input name="url" type="url" required></div>
+      <div><input type="submit" value="mention all links"></div>
+</form>
 
 {% for mention in mentions %}
     <div class="h-entry"><time class="dt-published" datetime="{{mention.created}}">{{mention.humancreated }}</time> <div class="h-card p-author" >{{mention.prettysource|safe}}</div> {%if mention.property %}sent '{{mention.property}}' to{% else %}mentioned{% endif %} {{mention.prettytarget|safe}} {% if mention.verified==True %}✅{%elif mention.verified==False %}❌{% endif %} <time class="dt-updated" datetime="{{mention.updated}}">{{mention.humanupdated}}</time> {{mention.sendOnState|default('')}}</div>
