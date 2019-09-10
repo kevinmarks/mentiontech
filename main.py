@@ -343,15 +343,18 @@ class ListMentions(webapp2.RequestHandler):
         if jsonformat:
             jsonout={'type':'feed','children':[]}
             for mention in mentions:
+                post ={"type": "entry","published": mention.created.isoformat(),"url": mention.source}
                 if mention.sourcejf2:
-                    jsonout['children'].append(json.loads(mention.sourcejf2))
-                else:
-                    jsonout['children'].append({
-                      "type": "entry",
-                      "published": mention.created.isoformat(),
-                      "url": mention.source,
-                    })
+                    post=json.loads(mention.sourcejf2)
+                    post['url'] = post.get('url',mention.source)
+                    for key in post:
+                        if post[key]==mention.target or (isinstance(post[key],dict) and post[key].get('url','')==mention.target):
+                            post['wm-property']=key
+                            break
+                    
+                jsonout['children'].append(post)
             self.response.headers['Content-Type'] = 'application/json'
+            self.response.headers['Access-Control-Allow-Origin'] = '*'
             self.response.write(json.dumps(jsonout))
         else:
             for mention in mentions:
